@@ -1,15 +1,12 @@
 from flask import Flask, request, jsonify, send_from_directory, make_response
 from flask_cors import CORS
-import os
-import json
-import time
-import requests
+import os, json, time, requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes, no credentials
+CORS(app, resources={r"/*": {"origins": "*"}})  # enable CORS for all routes & origins
 
 DATA_FILE = "data.json"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -28,7 +25,6 @@ def save_data(data):
 def call_llm(prompt, model="mistralai/mistral-7b-instruct", timeout=30):
     if not API_KEY:
         raise ValueError("OPENROUTER_API_KEY not set in environment")
-
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -82,8 +78,11 @@ def serve_admin_dashboard():
 @app.route("/submit", methods=["POST", "OPTIONS"])
 def submit():
     if request.method == "OPTIONS":
-        # Preflight request response
-        return make_response("", 204)
+        response = make_response()
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        return response, 200
 
     payload = request.get_json(force=True)
     rating = payload.get("rating")
@@ -107,20 +106,23 @@ def submit():
     data.append(entry)
     save_data(data)
 
-    return jsonify(entry), 201
+    response = jsonify(entry)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response, 201
 
-@app.route("/admin_data", methods=["GET"])
+@app.route("/admin_data", methods=["GET", "OPTIONS"])
 def admin_data():
-    data = load_data()
-    return jsonify(data), 200
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        return response, 200
 
-@app.after_request
-def after_request(response):
-    # Add CORS headers to all responses
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-    response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-    return response
+    data = load_data()
+    response = jsonify(data)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response, 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
