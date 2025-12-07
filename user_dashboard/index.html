@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>User Feedback</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    textarea { width: 100%; max-width: 700px; }
+    pre { background:#f4f4f4; padding:10px; max-width:700px; }
+  </style>
+</head>
+<body>
+  <h2>Submit a Review</h2>
+  <label>Star Rating:</label>
+  <select id="rating">
+    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+    <option value="4">4</option><option value="5">5</option>
+  </select>
+  <br><br>
+  <textarea id="review" rows="6" placeholder="Write your short review here..."></textarea><br><br>
+  <button onclick="submitReview()">Submit</button>
+
+  <h3>AI Response</h3>
+  <pre id="output">No response yet.</pre>
+
+<script>
+async function submitReview(){
+  const rating = document.getElementById("rating").value;
+  const review = document.getElementById("review").value;
+  const res = await fetch("http://localhost:5000/submit", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ rating: Number(rating), review })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    document.getElementById("output").textContent = "Error: " + JSON.stringify(err);
+    return;
+  }
+  const data = await res.json();
+  document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+  // clear input if desired:
+  // document.getElementById("review").value = "";
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Dashboard</title>
+  <style> body{font-family: Arial; padding:20px;} pre{background:#f7f7f7;padding:10px;} </style>
+</head>
+<body>
+  <h2>Admin - Submissions</h2>
+  <button onclick="loadData()">Refresh</button>
+  <div id="stats"></div>
+  <pre id="data"></pre>
+
+<script>
+async function loadData(){
+  const res = await fetch("http://localhost:5000/admin_data");
+  const arr = await res.json();
+  document.getElementById("data").textContent = JSON.stringify(arr, null, 2);
+  // Basic analytics
+  const counts = {};
+  arr.forEach(r => counts[r.rating] = (counts[r.rating]||0)+1);
+  const keys = Object.keys(counts).sort();
+  document.getElementById("stats").innerHTML = "<b>Rating counts:</b> " + keys.map(k => `${k}: ${counts[k]}`).join(", ");
+}
+loadData();
+</script>
+</body>
+</html>
