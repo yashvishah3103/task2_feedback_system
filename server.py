@@ -31,6 +31,9 @@ def save_data(data):
 
 
 def call_llm(prompt):
+    if not API_KEY:
+        return "Error: Missing OpenRouter API key on server."
+
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -42,7 +45,10 @@ def call_llm(prompt):
     }
 
     r = requests.post(OPENROUTER_URL, headers=headers, json=body)
-    r.raise_for_status()
+    if r.status_code != 200:
+        return f"OpenRouter Error ({r.status_code}): {r.text}"
+
+    
     result = r.json()
     return result["choices"][0]["message"]["content"]
 
@@ -117,6 +123,10 @@ def admin_data():
 @app.route("/admin", methods=["GET"])
 def admin_page():
     return jsonify({"info": "Admin dashboard backend OK"}), 200
+    
+@app.route("/test_key")
+def test_key():
+    return jsonify({"API_KEY_loaded": API_KEY is not None})
 
 
 if __name__ == "__main__":
