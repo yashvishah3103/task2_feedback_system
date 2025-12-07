@@ -9,12 +9,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enables CORS for all routes and origins
+CORS(app)  # Enable CORS for all routes
 
 DATA_FILE = "data.json"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
-
 
 def load_data():
     if not os.path.exists(DATA_FILE):
@@ -22,11 +21,9 @@ def load_data():
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-
 
 def call_llm(prompt, model="mistralai/mistral-7b-instruct", timeout=30):
     if not API_KEY:
@@ -46,7 +43,6 @@ def call_llm(prompt, model="mistralai/mistral-7b-instruct", timeout=30):
     r.raise_for_status()
     resp = r.json()
     return resp["choices"][0]["message"]["content"]
-
 
 def generate_ai_outputs(review, rating):
     prompt = f"""
@@ -75,16 +71,13 @@ Produce ONLY valid JSON with exactly three keys:
         print("LLM error:", e)
         return ("Thanks — we got your review!", "AI error: could not generate summary.", "Contact the reviewer or inspect details.")
 
-
 @app.route("/")
 def serve_user_dashboard():
     return send_from_directory("user_dashboard", "index.html")
 
-
 @app.route("/admin")
 def serve_admin_dashboard():
     return send_from_directory("admin_dashboard", "index.html")
-
 
 @app.route("/submit", methods=["POST"])
 def submit():
@@ -112,14 +105,13 @@ def submit():
 
     return jsonify(entry), 201
 
-
 @app.route("/admin_data", methods=["GET"])
 def admin_data():
     data = load_data()
     return jsonify(data), 200
 
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
