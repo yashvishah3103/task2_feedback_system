@@ -17,7 +17,6 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 
 # -------------------- Helpers --------------------
-
 def load_data():
     if not os.path.exists(DATA_FILE):
         return []
@@ -35,46 +34,59 @@ def call_llm(prompt):
         return "Error: Missing OpenRouter API key on server."
 
     headers = {
-        "Authorization": f"Bearer {API_KEY}",
+        "Authorization": f"Bearer " + API_KEY,
         "Content-Type": "application/json"
     }
 
     body = {
-        "model": "openrouter/auto",
+        "model": "google/gemini-2.0-flash-lite-preview-02-05:free",   # cheap + fast
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 300   
+        "max_tokens": 200
     }
 
     r = requests.post(OPENROUTER_URL, headers=headers, json=body)
+
     if r.status_code != 200:
         return f"OpenRouter Error ({r.status_code}): {r.text}"
 
-    
-    result = r.json()
-    return result["choices"][0]["message"]["content"]
+    try:
+        return r.json()["choices"][0]["message"]["content"]
+    except:
+        return "Error: Invalid LLM response"
 
 
 def generate_ai_outputs(review, rating):
     prompt = f"""
-    User rating: {rating}/5
+    You are an AI writing assistant.  
+    Return ONLY a JSON object. No extra text. No markdown.
+
+    Rating: {rating}
     Review: {review}
 
-    Respond ONLY in this JSON format:
-
+    JSON format:
     {{
-        "user_msg": "message to the user",
-        "summary": "one paragraph summary",
-        "next_actions": "recommended next steps"
+        "user_msg": "short friendly message for the user",
+        "summary": "1 paragraph summary of the review",
+        "next_actions": "clear recommended business action"
     }}
     """
 
     response = call_llm(prompt)
 
+    # --- Parse JSON safely ---
     try:
         data = json.loads(response)
-        return data["user_msg"], data["summary"], data["next_actions"]
+        user_msg = data.get("user_msg", "Thank you for your feedback!")
+        summary = data.get("summary", "Summary unavailable.")
+        next_actions = data.get("next_actions", "No recommendations.")
     except:
-        return response, "Summary unavailable", "No recommendations"
+        # Fallback — never return empty responses
+        user_msg = "Thank you for your review!"
+        summary = f"The user rated {rating}/5 and said: {review}"
+        next_actions = "Consider improving key areas mentioned."
+
+    return user_msg, summary, next_actions
+
 
 # -------------------- Routes --------------------
 
