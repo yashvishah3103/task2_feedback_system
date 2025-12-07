@@ -1,50 +1,118 @@
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 import os
-import json
 import time
+import json
 import requests
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS globally and handle OPTIONS automatically
+CORS(app)
 
 DATA_FILE = "data.json"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# load_data, save_data, call_llm, generate_ai_outputs definitions here
+
+# -------------------- Helpers --------------------
+
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return []
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def call_llm(prompt):
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "model": "openrouter/auto",
+        "messages": [{"role": "user", "content": prompt}]
+    }
+
+    r = requests.post(OPENROUTER_URL, headers=headers, json=body)
+    r.raise_for_status()
+
+    result = r.json()
+    return result["choices"][0]["message"]["content"]
+
+
+def generate_ai_outputs(review, rating):
+    prompt = f"""
+    User rating: {rating}/5
+    Review: {review}
+
+    Provide:
+    1) AI response to user.
+    2) Summary of the review.
+    3) Recommended next actions.
+    """
+
+    response = call_llm(prompt)
+
+    # simple parsing
+    parts = response.split("\n")
+    user_msg = response
+    summary = " ".join(parts[:3])
+    next_actions = " ".join(parts[-3:])
+
+    return user_msg, summary, next_actions
+
+
+# -------------------- Routes --------------------
+
+@app.route("/")
+def home():
+    return jsonify({"message": "Backend running"}), 200
+
 
 @app.route("/submit", methods=["POST"])
 def submit():
-    payload = request.get_json(force=True)
-    rating = payload.get("rating")
-    review = payload.get("review", "").strip()
+    data = request.get_json(force=True)
+    rating = data.get("rating")
+    review = data.get("review", "").strip()
 
-    if not review or rating is None:
+    if rating is None or not review:
         return jsonify({"error": "rating and review required"}), 400
 
-    user_msg, summary, next_actions = generate_ai_outputs(review, rating)
+    ai_msg, summary, next_actions = generate_ai_outputs(review, rating)
 
     entry = {
         "timestamp": int(time.time()),
         "rating": int(rating),
         "review": review,
-        "ai_response": user_msg,
+        "ai_response": ai_msg,
         "summary": summary,
         "recommendation": next_actions
     }
 
-    data = load_data()
-    data.append(entry)
-    save_data(data)
+    all_data = load_data()
+    all_data.append(entry)
+    save_data(all_data)
 
     return jsonify(entry), 201
 
-# other routes like /admin, /admin_data
+
+@app.route("/admin_data", methods=["GET"])
+def admin_data():
+    return jsonify(load_data()), 200
+
+
+@app.route("/admin", methods=["GET"])
+def admin_page():
+    return jsonify({"info": "Admin dashboard backend OK"}), 200
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
-
+    app.run(host="0.0.0.0", port=5000)
