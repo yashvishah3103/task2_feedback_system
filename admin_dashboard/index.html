@@ -13,7 +13,7 @@
 
 <script>
 async function loadData(){
-  const res = await fetch("http://localhost:5000/admin_data");
+  const res = await fetch("https://task2-backend.onrender.com/admin_data");
   const arr = await res.json();
   document.getElementById("data").textContent = JSON.stringify(arr, null, 2);
   // Basic analytics
