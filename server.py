@@ -59,21 +59,22 @@ def generate_ai_outputs(review, rating):
     User rating: {rating}/5
     Review: {review}
 
-    Provide:
-    1) AI response to user.
-    2) Summary of the review.
-    3) Recommended next actions.
+    Respond ONLY in this JSON format:
+
+    {{
+        "user_msg": "message to the user",
+        "summary": "one paragraph summary",
+        "next_actions": "recommended next steps"
+    }}
     """
 
     response = call_llm(prompt)
-    parts = response.split("\n")
 
-    user_msg = response
-    summary = " ".join(parts[:3])
-    next_actions = " ".join(parts[-3:])
-
-    return user_msg, summary, next_actions
-
+    try:
+        data = json.loads(response)
+        return data["user_msg"], data["summary"], data["next_actions"]
+    except:
+        return response, "Summary unavailable", "No recommendations"
 
 # -------------------- Routes --------------------
 
