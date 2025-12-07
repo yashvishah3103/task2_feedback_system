@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+  # Enable CORS for all routes
 
 DATA_FILE = "data.json"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -81,6 +82,12 @@ def serve_admin_dashboard():
 
 @app.route("/submit", methods=["POST"])
 def submit():
+    if request.method == "OPTIONS":
+        response = app.make_response("")
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response
     payload = request.get_json(force=True)
     rating = payload.get("rating")
     review = payload.get("review", "").strip()
@@ -109,6 +116,13 @@ def submit():
 def admin_data():
     data = load_data()
     return jsonify(data), 200
+
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    return response
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
