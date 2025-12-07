@@ -41,7 +41,8 @@ def call_llm(prompt):
 
     body = {
         "model": "openrouter/auto",
-        "messages": [{"role": "user", "content": prompt}]
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 300   
     }
 
     r = requests.post(OPENROUTER_URL, headers=headers, json=body)
