@@ -9,19 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-
-# ---- FIX 1: Correct CORS configuration ----
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
-
-
-# ---- FIX 2: Allow OPTIONS preflight ----
-@app.after_request
-def add_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"]
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"]
-    return response
-
+CORS(app)  # Enables CORS for all routes and origins
 
 DATA_FILE = "data.json"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -48,14 +36,12 @@ def call_llm(prompt, model="mistralai/mistral-7b-instruct", timeout=30):
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
-
     body = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
         "max_tokens": 300,
     }
-
     r = requests.post(OPENROUTER_URL, headers=headers, json=body, timeout=timeout)
     r.raise_for_status()
     resp = r.json()
@@ -74,30 +60,20 @@ Produce ONLY valid JSON with exactly three keys:
 - summary: One-line summary of the review.
 - next_actions: 1-2 recommended actions for the business (short).
 """
-
     try:
         text = call_llm(prompt)
-
         import re
         pattern = re.compile(r'\{.*\}', re.DOTALL)
         m = pattern.search(text)
         if m:
             parsed = json.loads(m.group(0))
+            return parsed.get("response_to_user", ""), parsed.get("summary", ""), parsed.get("next_actions", "")
         else:
             parsed = json.loads(text)
-
-        return (
-            parsed.get("response_to_user", ""),
-            parsed.get("summary", ""),
-            parsed.get("next_actions", "")
-        )
+            return parsed.get("response_to_user", ""), parsed.get("summary", ""), parsed.get("next_actions", "")
     except Exception as e:
         print("LLM error:", e)
-        return (
-            "Thanks — we received your review!",
-            "AI error: Summary unavailable.",
-            "Manually inspect the review."
-        )
+        return ("Thanks — we got your review!", "AI error: could not generate summary.", "Contact the reviewer or inspect details.")
 
 
 @app.route("/")
@@ -110,11 +86,8 @@ def serve_admin_dashboard():
     return send_from_directory("admin_dashboard", "index.html")
 
 
-@app.route("/submit", methods=["POST", "OPTIONS"])   # FIX 3
+@app.route("/submit", methods=["POST"])
 def submit():
-    if request.method == "OPTIONS":
-        return ("", 200)
-
     payload = request.get_json(force=True)
     rating = payload.get("rating")
     review = payload.get("review", "").strip()
@@ -147,5 +120,6 @@ def admin_data():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
 
