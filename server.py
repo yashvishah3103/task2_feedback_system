@@ -43,7 +43,6 @@ def call_llm(prompt):
 
     r = requests.post(OPENROUTER_URL, headers=headers, json=body)
     r.raise_for_status()
-
     result = r.json()
     return result["choices"][0]["message"]["content"]
 
@@ -60,9 +59,8 @@ def generate_ai_outputs(review, rating):
     """
 
     response = call_llm(prompt)
-
-    # simple parsing
     parts = response.split("\n")
+
     user_msg = response
     summary = " ".join(parts[:3])
     next_actions = " ".join(parts[-3:])
@@ -75,6 +73,13 @@ def generate_ai_outputs(review, rating):
 @app.route("/")
 def home():
     return jsonify({"message": "Backend running"}), 200
+
+
+# ------ FIX: Add GET handler to prevent 405 -------
+
+@app.route("/submit", methods=["GET"])
+def submit_info():
+    return jsonify({"info": "Use POST to submit reviews"}), 200
 
 
 @app.route("/submit", methods=["POST"])
