@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, make_response
 from flask_cors import CORS
 import os
 import json
@@ -9,8 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
-  # Enable CORS for all routes
+CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes, no credentials
 
 DATA_FILE = "data.json"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -80,14 +79,12 @@ def serve_user_dashboard():
 def serve_admin_dashboard():
     return send_from_directory("admin_dashboard", "index.html")
 
-@app.route("/submit", methods=["POST"])
+@app.route("/submit", methods=["POST", "OPTIONS"])
 def submit():
     if request.method == "OPTIONS":
-        response = app.make_response("")
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        return response
+        # Preflight request response
+        return make_response("", 204)
+
     payload = request.get_json(force=True)
     rating = payload.get("rating")
     review = payload.get("review", "").strip()
@@ -119,6 +116,7 @@ def admin_data():
 
 @app.after_request
 def after_request(response):
+    # Add CORS headers to all responses
     response.headers.add("Access-Control-Allow-Origin", "*")
     response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
     response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
@@ -126,6 +124,3 @@ def after_request(response):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-
-
